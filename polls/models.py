@@ -21,7 +21,7 @@ class Poll(models.Model):
 
 class PollPartitionBase(PartitionModel):
     id = PartitionAutoSequenceField('sharded', primary_key=True)
-    poll_id = models.IntegerField(db_index=True)
+    poll_id = models.PositiveIntegerField(db_index=True)
 
     class Meta:
         abstract = True
