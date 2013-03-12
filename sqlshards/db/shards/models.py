@@ -57,34 +57,6 @@ class ShardedAutoField(AutoField):
             cursor.close()
 
 
-class PartitionAutoSequenceField(AutoSequenceField):
-    """
-    The same as AutoSequenceField except that the sequence is based on the master
-    table's default name.
-
-    The behavior of this is slightly odd, as it has to work around the fact that
-    the master tables arent actually sync'd, so instead it listens for its first
-    child, and attempts to create sequences on creation of that table.
-    """
-    def set_sequence_name(self, **kwargs):
-        if not (hasattr(self.model, '_shards') and self.model._shards.is_master):
-            return
-        self._sequence = self.sequence or '%s_%s_seq' % (self.model._shards.sequence, self.column)
-
-    def create_sequence(self, created_models, **kwargs):
-        # XXX: the parent model never gets called on here from signals due to it not actually
-        # being a real table
-        if not hasattr(self.model, '_shards'):
-            return
-        if self.model not in created_models:
-            return
-        if self.model._shards.is_master:
-            super(PartitionAutoSequenceField, self).create_sequence(created_models, **kwargs)
-        elif self.model._shards.num == 0:
-            parent = self.model._shards.parent
-            parent._meta.get_field_by_name(self.name)[0].create_sequence([parent])
-
-
 class PartitionedForeignKey(ForeignKey):
     """
     Behaves identical to a ForeignKey except it allows referencing an fkey
@@ -200,8 +172,7 @@ def get_cluster_sizes(connections):
 
 
 DEFAULT_NAMES = ('num_shards', 'key', 'sequence', 'abstract', 'cluster')
-#CLUSTER_SIZES = get_cluster_sizes(connections)
-CLUSTER_SIZES = dict(sharded=2)
+CLUSTER_SIZES = get_cluster_sizes(connections)
 
 
 class MasterShardOptions(object):
