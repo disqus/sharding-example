@@ -1,7 +1,7 @@
 import datetime
 from django.db import models
 from django.utils import timezone
-from sqlshards.db.shards.models import PartitionAutoSequenceField, PartitionModel
+from sqlshards.db.shards.models import ShardedAutoField, PartitionModel
 
 class Poll(models.Model):
     def __unicode__(self):
@@ -20,7 +20,7 @@ class Poll(models.Model):
 
 
 class PollPartitionBase(PartitionModel):
-    id = PartitionAutoSequenceField('sharded', primary_key=True)
+    id = ShardedAutoField(primary_key=True, auto_created=True)
     poll_id = models.PositiveIntegerField(db_index=True)
 
     class Meta:
