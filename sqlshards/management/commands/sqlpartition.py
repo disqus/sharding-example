@@ -8,7 +8,7 @@ from django.db import connections
 from django.db.models.loading import get_app
 
 from sqlshards.db.shards.helpers import get_sharded_id_sequence_name
-from sqlshards.db.shards.models import generate_child_partition, replace_pk
+from sqlshards.db.shards.models import generate_child_partition
 
 # Partitioning limitations:
 #   - Indexes, ALTER TABLE ... RENAME, and INSERT do not operate as expected
@@ -50,7 +50,6 @@ class Command(BaseCommand):
 
         def get_child_table_sql(child_num):
             child = generate_child_partition(model, child_num)
-            child = replace_pk(child)
 
             output, references = self.connection.creation.sql_create_model(child, self.style, [model, child])
             return output
@@ -70,7 +69,6 @@ class Command(BaseCommand):
         migrations = []
         for i in shard_range:
             child = generate_child_partition(model, i)
-            child = replace_pk(child)
             if isinstance(child._shards.key, basestring):
                 shard_key_repr = child._shards.key
                 shard_key_expr = '"%s"' % shard_key_repr
@@ -118,7 +116,6 @@ $$ LANGUAGE PLPGSQL;""".format(our_epoch=our_epoch)
 
         for i in shard_range:
             child = generate_child_partition(model, i)
-            child = replace_pk(child)
             output.append(self.style.SQL_KEYWORD("CREATE SEQUENCE ") +
                self.style.SQL_TABLE(get_sharded_id_sequence_name(child)) + ";")
 

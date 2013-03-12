@@ -1,6 +1,5 @@
 from django.db import models
 from sqlshards.db.shards.models import PartitionModel
-from sqlshards.db.shards.helpers import replace_pk
 
 
 class SimpleModel(models.Model):

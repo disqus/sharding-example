@@ -32,10 +32,6 @@ class ShardedAutoField(AutoField):
         # Sequence creation for production is handled by DDL scripts
         # (sqlpartition).  This is needed to create sequences for
         # test models.
-        #
-        # TODO: Once the transitioning phase is over and @replace_pk is
-        # removed, a `contribute_to_class` similar to AutoSequenceField will
-        # need to be added to this class.
         if self.model not in created_models:
             return
 
@@ -421,30 +417,3 @@ class PartitionModel(Model):
 
     class Meta:
         abstract = True
-
-
-def replace_pk(cls):
-    """
-    A class decorator for transitioning models to ShardedAutoField.  This has
-    to handle all the logic that a field may perform on a class (via
-    contribute_to_class or otherwise).
-    """
-    def _replace_pk(model):
-        # Undo work from previous add_field/setup_pk run.
-        if model._meta.pk:
-            model._meta.local_fields.remove(model._meta.pk)
-            model._meta.pk = None
-
-        model._meta.has_auto_field = False
-        model._meta.auto_field = None
-
-        field = ShardedAutoField(primary_key=True, auto_created=True)
-        field.contribute_to_class(model, 'id')
-
-    if cls._shards.is_master:
-        for child in cls._shards.nodes:
-            child = _replace_pk(child)
-
-    _replace_pk(cls)
-
-    return cls
