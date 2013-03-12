@@ -1,7 +1,7 @@
-import psycopg2
 from django.db import connections, transaction
 from django.db.models.fields import BigIntegerField
 from django.db.models.signals import post_syncdb, class_prepared
+from django.db.utils import DatabaseError
 from django.utils.translation import ugettext_lazy as _
 
 
@@ -46,7 +46,7 @@ class AutoSequenceField(BigIntegerField):
         sid = transaction.savepoint(self.db_alias)
         try:
             cursor.execute("CREATE SEQUENCE %s;" % self._sequence)
-        except psycopg2.DatabaseError:
+        except DatabaseError:
             transaction.savepoint_rollback(sid, using=self.db_alias)
             # Sequence must already exist, ensure it gets reset
             cursor.execute("SELECT setval('%s', 1, false)" % (self._sequence,))
