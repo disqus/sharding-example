@@ -34,6 +34,7 @@ DATABASE_CONFIG = {
     }
 }
 DATABASES = dict(DatabaseConfigurator(DATABASE_CONFIG['servers'], DATABASE_CONFIG['root']))
+DATABASE_ROUTERS = ['sqlshards.db.shards.routers.ShardedRouter']
 DEFAULT_SHARD_COUNT = 2
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
