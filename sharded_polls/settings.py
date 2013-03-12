@@ -1,5 +1,7 @@
 # Django settings for sharded_polls project.
 import os
+import time
+from datetime import datetime
 from sqlshards.utils import DatabaseConfigurator
 
 DEBUG = True
@@ -35,6 +37,7 @@ DATABASE_CONFIG = {
 }
 DATABASES = dict(DatabaseConfigurator(DATABASE_CONFIG['servers'], DATABASE_CONFIG['root']))
 DATABASE_ROUTERS = ['sqlshards.db.shards.routers.ShardedRouter']
+SHARD_EPOCH = int(time.mktime(datetime(2012, 11, 1).timetuple()) * 1000)
 DEFAULT_SHARD_COUNT = 2
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
