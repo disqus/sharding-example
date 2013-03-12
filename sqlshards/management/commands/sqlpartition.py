@@ -7,8 +7,8 @@ from django.core.management.base import CommandError, BaseCommand
 from django.db import connections
 from django.db.models.loading import get_app
 
-from sqlshards.db.partitions.helpers import get_sharded_id_sequence_name
-from sqlshards.db.partitions.models import generate_child_partition, replace_pk
+from sqlshards.db.shards.helpers import get_sharded_id_sequence_name
+from sqlshards.db.shards.models import generate_child_partition, replace_pk
 
 # Partitioning limitations:
 #   - Indexes, ALTER TABLE ... RENAME, and INSERT do not operate as expected
@@ -35,8 +35,8 @@ class Command(BaseCommand):
            'form <app>.<model>).'
 
     option_list = BaseCommand.option_list + (
-        make_option('--num', action='store', type='int', dest='num_children', default=settings.FORUM_PARTITION_COUNT,
-                    help='number of partition tables to create [default: %d]' % (settings.FORUM_PARTITION_COUNT)),
+        make_option('--num', action='store', type='int', dest='num_children', default=settings.DEFAULT_SHARD_COUNT,
+                    help='number of partition tables to create [default: %d]' % (settings.DEFAULT_SHARD_COUNT)),
         make_option('--shard', action='store', type='int', dest='shard', default=0,
                     help='physical shard number to generate DDL for (0-based) [default: 0]'),
         make_option('--shards', action='store', type='int', dest='shards', default=1,
