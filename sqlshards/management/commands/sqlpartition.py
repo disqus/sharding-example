@@ -10,25 +10,6 @@ from django.db.models.loading import get_app
 from sqlshards.db.shards.helpers import get_sharded_id_sequence_name
 from sqlshards.db.shards.models import generate_child_partition
 
-# Partitioning limitations:
-#   - Indexes, ALTER TABLE ... RENAME, and INSERT do not operate as expected
-#     on the parent table.  Each child table must have their own indexes (as
-#     well as unique and FK constraints).  The initial SQL generated here
-#     handles these cases already.
-#
-#   - INSERT/UPDATE RETURNING clause does not work.  We could add support
-#     (see: http://people.planetpostgresql.org/dfetter/index.php?/archives/59-Partitioning-Glances.html)
-#     but this causes an additional insert per insert.  This also causes some
-#     odd behavior when trying to migrate data (you have to write to the child
-#     table directly instead of the parent table).  We don't use a sequence on
-#     the same database (and thus set the pk when saving), so this shouldn't be
-#     an issue.
-#
-#   - UPDATE will not migrate data from one partition to another.  The
-#     application must handle this manually.  Again, this can be supported,
-#     but introduces a huge conditional case for each combination
-#     (see: http://people.planetpostgresql.org/dfetter/index.php?/archives/51-Partitioning-Is-Such-Sweet-Sorrow.html)
-
 
 class Command(BaseCommand):
     help = 'Generates DML for partitioned tables (expects argument in the '\
@@ -145,18 +126,8 @@ $$ LANGUAGE PLPGSQL;""".format(our_epoch=our_epoch)
 
         num_children = options['num_children']
         shard_range = range(options['shard'], num_children, options['shards'])
-        known_models = [model]
-
-        # Known models are only models visible to the partitioned database
-        # cluster.
-        # for app in get_apps():
-        #     if '.' in app:
-        #         app, mod = app.split('.')
-        #         known_models.append(get_model(app, mod))
-        #     else:
-        #         known_models.extend(get_models(app), inclue_auto_created=True)
 
         output = self.get_sequences(model, num_children, shard_range)
-        output.extend(self.get_children_table_sql(model, known_models, num_children, shard_range))
+        output.extend(self.get_children_table_sql(model, [model], num_children, shard_range))
 
         return u'\n\n'.join(output) + '\n'
