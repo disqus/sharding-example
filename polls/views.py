@@ -8,7 +8,7 @@ from polls.models import Choice, Poll
 def vote(request, poll_id):
     p = get_object_or_404(Poll, pk=poll_id)
     try:
-        selected_choice = p.choice_set.get(pk=request.POST['choice'])
+        selected_choice = Choice.objects.get(poll_id=p.pk, pk=request.POST['choice'])
     except (KeyError, Choice.DoesNotExist):
         # Redisplay the poll voting form.
         return render_to_response('polls/detail.html', {
@@ -16,8 +16,7 @@ def vote(request, poll_id):
             'error_message': "You didn't select a choice.",
         }, context_instance=RequestContext(request))
     else:
-        selected_choice.votes += 1
-        selected_choice.save()
+        Choice.objects.filter(pk=pk, poll_id=p.pk).update(votes=F('votes') + 1)
         # Always return an HttpResponseRedirect after successfully dealing
         # with POST data. This prevents data from being posted twice if a
         # user hits the Back button.
