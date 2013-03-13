@@ -1,5 +1,5 @@
 from django.db import connections, transaction
-from django.db.models.fields import BigIntegerField
+from django.db.models.fields import AutoField, BigIntegerField
 from django.db.models.signals import post_syncdb, class_prepared
 from django.db.utils import DatabaseError
 from django.utils.translation import ugettext_lazy as _
@@ -81,4 +81,41 @@ class AutoSequenceField(BigIntegerField):
             cursor.execute("SELECT NEXTVAL(%s)", (self._sequence,))
             return cursor.fetchone()[0]
         finally:
+            cursor.close()
+
+
+class ShardedAutoField(AutoField):
+    def db_type(self, *args, **kwargs):
+        if not hasattr(self.model, '_shards'):
+            raise ValueError("ShardedAutoField must be used with a PartitionModel.")
+
+        if self.model._shards.is_master:
+            return "bigint"
+
+        return "bigint DEFAULT next_sharded_id('%s', %d)" % (
+            get_sharded_id_sequence_name(self.model),
+            self.model._shards.num)
+
+    def create_sequence(self, created_models, **kwargs):
+        # Sequence creation for production is handled by DDL scripts
+        # (sqlpartition).  This is needed to create sequences for
+        # test models.
+        if self.model not in created_models:
+            return
+
+        db_alias = self.model._shards.cluster
+
+        for child in self.model._shards.nodes:
+            cursor = connections[db_alias].cursor()
+            sid = transaction.savepoint(db_alias)
+            sequence_name = get_sharded_id_sequence_name(child)
+            try:
+                cursor.execute("CREATE SEQUENCE %s;" % sequence_name)
+            except DatabaseError:
+                transaction.savepoint_rollback(sid, using=db_alias)
+                # Sequence must already exist, ensure it gets reset
+                cursor.execute("SELECT setval('%s', 1, false)" % (sequence_name,))
+            else:
+                print 'Created sequence %r on %r' % (sequence_name, db_alias)
+                transaction.savepoint_commit(sid, using=db_alias)
             cursor.close()

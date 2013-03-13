@@ -5,7 +5,7 @@ from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned, 
 from django.db import connections, transaction
 from django.db.models import loading, Manager, Model, signals
 from django.db.models.base import ModelBase, subclass_exception
-from django.db.models.fields import AutoField, PositiveIntegerField
+from django.db.models.fields import PositiveIntegerField
 from django.db.models.fields.related import ForeignKey, ManyToOneRel, \
   RECURSIVE_RELATIONSHIP_CONSTANT, ReverseSingleRelatedObjectDescriptor
 from django.db.utils import DatabaseError
@@ -14,43 +14,6 @@ from sqlshards.db.shards.fields import AutoSequenceField
 from sqlshards.db.shards.helpers import get_sharded_id_sequence_name
 from sqlshards.db.shards.manager import MasterPartitionManager
 from sqlshards.utils import wraps
-
-
-class ShardedAutoField(AutoField):
-    def db_type(self, *args, **kwargs):
-        if not hasattr(self.model, '_shards'):
-            raise ValueError("ShardedAutoField must be used with a PartitionModel.")
-
-        if self.model._shards.is_master:
-            return "bigint"
-
-        return "bigint DEFAULT next_sharded_id('%s', %d)" % (
-            get_sharded_id_sequence_name(self.model),
-            self.model._shards.num)
-
-    def create_sequence(self, created_models, **kwargs):
-        # Sequence creation for production is handled by DDL scripts
-        # (sqlpartition).  This is needed to create sequences for
-        # test models.
-        if self.model not in created_models:
-            return
-
-        db_alias = self.model._shards.cluster
-
-        for child in self.model._shards.nodes:
-            cursor = connections[db_alias].cursor()
-            sid = transaction.savepoint(db_alias)
-            sequence_name = get_sharded_id_sequence_name(child)
-            try:
-                cursor.execute("CREATE SEQUENCE %s;" % sequence_name)
-            except DatabaseError:
-                transaction.savepoint_rollback(sid, using=db_alias)
-                # Sequence must already exist, ensure it gets reset
-                cursor.execute("SELECT setval('%s', 1, false)" % (sequence_name,))
-            else:
-                print 'Created sequence %r on %r' % (sequence_name, db_alias)
-                transaction.savepoint_commit(sid, using=db_alias)
-            cursor.close()
 
 
 class PartitionedForeignKey(ForeignKey):
